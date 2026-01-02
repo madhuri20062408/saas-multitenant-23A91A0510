@@ -1,112 +1,87 @@
+// prisma/schema.prisma
 generator client {
-  provider = "prisma-client"
-  output   = "../generated/prisma"
+  provider = "prisma-client-js"
 }
 
 datasource db {
   provider = "postgresql"
+  url      = env("DATABASE_URL")
 }
-
-// ========== Enums ==========
-
-enum Role {
-  SUPER_ADMIN
-  TENANT_ADMIN
-  USER
-}
-
-enum TaskStatus {
-  TODO
-  IN_PROGRESS
-  DONE
-}
-
-// ========== Models ==========
 
 model Plan {
-  id          String   @id @default(cuid())
-  name        String   @unique // free, pro, enterprise
-  maxUsers    Int
-  maxProjects Int
-  tenants     Tenant[]
+  id         Int      @id @default(autoincrement())
+  name       String   @unique
+  maxUsers   Int      @map("max_users")
+  maxProjects Int     @map("max_projects")
+  tenants    Tenant[]
+
+  @@map("plans")
 }
 
 model Tenant {
-  id        String    @id @default(cuid())
+  id        Int       @id @default(autoincrement())
   name      String
   subdomain String    @unique
+  planId    Int       @map("plan_id")
   plan      Plan      @relation(fields: [planId], references: [id])
-  planId    String
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  
   users     User[]
   projects  Project[]
-  tasks     Task[]
-  auditLogs AuditLog[]
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
+
+  @@map("tenants")
 }
 
 model User {
-  id        String   @id @default(cuid())
-  email     String
-  password  String
-  name      String
-  role      Role
-  tenant    Tenant?  @relation(fields: [tenantId], references: [id])
-  tenantId  String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id           Int       @id @default(autoincrement())
+  email        String
+  name         String
+  passwordHash String    @map("password_hash")
+  role         String
+  tenantId     Int?      @map("tenant_id")
+  tenant       Tenant?   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+  
+  projects     Project[]
+  assignedTasks Task[]
 
-  // back relations
-  createdProjects Project[]        @relation("ProjectCreatedBy")
-  assignedTasks   Task[]
-  auditLogs       AuditLog[]
-
-  @@unique([email, tenantId]) // email unique per tenant; tenantId NULL for super admin
+  @@unique([tenantId, email])
+  @@map("users")
 }
 
 model Project {
-  id          String   @id @default(cuid())
+  id          Int      @id @default(autoincrement())
   name        String
   description String?
-  tenant      Tenant   @relation(fields: [tenantId], references: [id])
-  tenantId    String
+  status      String   @default("active")
+  tenantId    Int      @map("tenant_id")
+  createdBy   Int      @map("created_by")
+  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  creator     User     @relation(fields: [createdBy], references: [id])
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  
   tasks       Task[]
-  createdBy   User     @relation("ProjectCreatedBy", fields: [createdById], references: [id])
-  createdById String
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
 
-  @@index([tenantId])
+  @@map("projects")
 }
 
 model Task {
-  id          String     @id @default(cuid())
+  id          Int      @id @default(autoincrement())
   title       String
   description String?
-  status      TaskStatus @default(TODO)
-  project     Project    @relation(fields: [projectId], references: [id])
-  projectId   String
-  assignee    User?      @relation(fields: [assigneeId], references: [id])
-  assigneeId  String?
-  tenant      Tenant     @relation(fields: [tenantId], references: [id])
-  tenantId    String
-  createdAt   DateTime   @default(now())
-  updatedAt   DateTime   @updatedAt
+  status      String   @default("todo")
+  priority    String   @default("medium")
+  projectId   Int      @map("project_id")
+  tenantId    Int      @map("tenant_id")
+  assignedTo  Int?     @map("assigned_to")
+  dueDate     DateTime? @map("due_date")
+  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  assignee    User?    @relation(fields: [assignedTo], references: [id])
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
 
-  @@index([tenantId])
-}
-
-model AuditLog {
-  id        String   @id @default(cuid())
-  tenant    Tenant?  @relation(fields: [tenantId], references: [id])
-  tenantId  String?
-  user      User?    @relation(fields: [userId], references: [id])
-  userId    String?
-  action    String
-  details   String?
-  ip        String?
-  userAgent String?
-  createdAt DateTime @default(now())
-
-  @@index([tenantId])
+  @@map("tasks")
 }

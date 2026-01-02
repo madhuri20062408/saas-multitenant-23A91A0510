@@ -1,0 +1,36 @@
+{
+  "testCredentials": {
+    "superAdmin": {
+      "email": "superadmin@system.com",
+      "password": "Admin123!",
+      "role": "SUPER_ADMIN",
+      "tenantId": null
+    },
+    "tenants": [
+      {
+        "name": "Acme Inc",
+        "subdomain": "acme",
+        "status": "active",
+        "subscriptionPlan": "pro",
+        "admin": {
+          "email": "alice@acme.com",
+          "password": "Password123!",
+          "role": "TENANT_ADMIN"
+        },
+        "users": [
+          {
+            "email": "bob@acme.com",
+            "password": "Password123!",
+            "role": "USER"
+          }
+        ],
+        "projects": [
+          {
+            "name": "Testing",
+            "description": "UI Design"
+          }
+        ]
+      }
+    ]
+  }
+}
